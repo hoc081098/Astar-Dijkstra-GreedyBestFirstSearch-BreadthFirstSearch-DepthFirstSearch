@@ -1,0 +1,3 @@
+rootProject.name = 'com.hoc'
+include 'java'
+
