@@ -1,19 +1,27 @@
 package com.hoc.kotlin
 
 import com.hoc.kotlin.Constants.FONT
+import com.hoc.kotlin.swing.Swing
 import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.channels.Channel
+import kotlinx.coroutines.experimental.channels.actor
+import kotlinx.coroutines.experimental.delay
 import org.netbeans.lib.awtextra.AbsoluteConstraints
 import org.netbeans.lib.awtextra.AbsoluteLayout
+import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Dimension
+import java.awt.Font
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.awt.event.MouseMotionAdapter
-import java.lang.Math.*
+import java.lang.Math.abs
+import java.lang.Math.sqrt
 import javax.swing.*
+import javax.swing.border.BevelBorder
 import javax.swing.border.LineBorder
 import kotlin.math.pow
-import com.hoc.kotlin.Point.Type as PointType
+
 
 /**
  * Created by Peter Hoc on 26/04/2018
@@ -21,68 +29,86 @@ import com.hoc.kotlin.Point.Type as PointType
 
 
 class MainFrame : JFrame(), Contract.View {
-    private val popup = JPopupMenu()
-    private val point = Point(-1, -1, PointType.EMPTY)
+    private val cols = COLS
+    private val rows = ROWS
+    private val cellSize = CELL_SIZE
+
+    private val point = Point(-1, -1, PointType.EMPTY, cellSize)
+    private var job: Job? = null
+    private var searchAlgorithm: SearchAlgorithm? = null
+
     private lateinit var btnFindPath: JButton
+    private lateinit var popup: JPopupMenu
     private lateinit var cbDiagonalMovement: JCheckBox
     private lateinit var cbDontCrossCorner: JCheckBox
     private lateinit var cbbAlgorithm: JComboBox<String>
     private lateinit var cbbHeuristic: JComboBox<String>
     private lateinit var graphicPanel: GraphicPanel
     private lateinit var lblStatus: JLabel
-    private var job: Job? = null
-    private var searchAlgorithm: SearchAlgorithm? = null
 
-    init {
-        initComponents()
-        this.setLocationRelativeTo(null)
-        val itemStart = JMenuItem("Set begin point")
-        popup.add(itemStart)
-        val itemEnd = JMenuItem("Set end point")
-        popup.add(itemEnd)
-        itemStart.addActionListener {
-            graphicPanel.begin = point
-            graphicPanel.repaint()
-        }
-        itemEnd.addActionListener {
-            graphicPanel.end = point
-            graphicPanel.repaint()
+    private val actor = actor<MouseEvent>(context = Swing, capacity = Channel.CONFLATED) {
+        for (evt in this) {
+            graphicPanelMouseDragged(evt)
+            delay(20)
+            println("After delay")
         }
     }
 
+    init {
+        initComponents()
+        setLocationRelativeTo(null)
+    }
+
     private fun initComponents() {
-        graphicPanel = GraphicPanel()
+        //Frame
+        defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
+        title = "AStar / Dijkstra / BFS"
+        isAlwaysOnTop = true
+        preferredSize = Dimension(800, 600)
+        isResizable = true
+
+        //popup menu
+        popup = JPopupMenu()
+        JMenuItem("Set begin point").apply {
+            addActionListener {
+                graphicPanel.begin = point
+                graphicPanel.repaint()
+            }
+        }.let(popup::add)
+        JMenuItem("Set end point").apply {
+            addActionListener {
+                graphicPanel.end = point
+                graphicPanel.repaint()
+            }
+        }.let(popup::add)
+
+
+        val jPanel2 = JPanel()
         lblStatus = JLabel()
         btnFindPath = JButton()
+        val btnClearPathAndWalls = JButton()
         cbbAlgorithm = JComboBox()
         cbDontCrossCorner = JCheckBox()
         cbDiagonalMovement = JCheckBox()
         cbbHeuristic = JComboBox()
         val jLabel1 = JLabel()
         val jLabel2 = JLabel()
-        val lblStart = JLabel()
         val jLabel3 = JLabel()
         val jLabel4 = JLabel()
-        val jLabel5 = JLabel()
         val jLabel6 = JLabel()
-        val lblStart2 = JLabel()
-        val jPanel1 = JPanel()
-        val btnClear = JButton()
+        val btnClear1 = JButton()
+        val btnClearPath = JButton()
+        val buttonFont = Font("Fira Code", 0, 11)
 
-        defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
-        title = "AStar / Dijkstra / BFS"
-        isAlwaysOnTop = true
-        background = Color(204, 255, 204)
-        preferredSize = Dimension(776, 550)
-        isResizable = false
 
+        graphicPanel = GraphicPanel(cols, rows, cellSize)
         graphicPanel.run {
             background = Color.white
-            border = LineBorder(Color(0, 0, 0), 1, true)
             preferredSize = Dimension(PANEL_WIDTH, PANEL_HEIGHT)
             addMouseMotionListener(object : MouseMotionAdapter() {
                 override fun mouseDragged(evt: MouseEvent) {
-                    graphicPanelMouseDragged(evt)
+                    actor.offer(evt)
+
                 }
             })
             addMouseListener(object : MouseAdapter() {
@@ -91,26 +117,27 @@ class MainFrame : JFrame(), Contract.View {
                 }
             })
         }
-
-        val graphicPanelLayout = GroupLayout(graphicPanel)
-        graphicPanel.layout = graphicPanelLayout
-        graphicPanelLayout.setHorizontalGroup(
-                graphicPanelLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                        .addGap(0, 498, java.lang.Short.MAX_VALUE.toInt())
+        val myPanel1Layout = GroupLayout(graphicPanel)
+        graphicPanel.layout = myPanel1Layout
+        myPanel1Layout.setHorizontalGroup(
+                myPanel1Layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGap(0, 340, java.lang.Short.MAX_VALUE.toInt())
         )
-        graphicPanelLayout.setVerticalGroup(
-                graphicPanelLayout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                        .addGap(0, 498, java.lang.Short.MAX_VALUE.toInt())
+        myPanel1Layout.setVerticalGroup(
+                myPanel1Layout.createParallelGroup(GroupLayout.Alignment.LEADING)
+                        .addGap(0, 583, java.lang.Short.MAX_VALUE.toInt())
         )
 
-        jPanel1.run {
-            background = Color(39, 40, 34)
-            border = LineBorder(Color(0, 102, 102), 1, true)
-            layout = AbsoluteLayout()
-        }
+        contentPane.add(graphicPanel, BorderLayout.CENTER)
+
+        jPanel2.background = Color(33, 33, 33)
+        jPanel2.border = BorderFactory.createBevelBorder(BevelBorder.RAISED, Color(255, 255, 255), Color(255, 255, 255), null, null)
+        jPanel2.foreground = Color(51, 51, 51)
+        jPanel2.preferredSize = Dimension(280, 500)
+        jPanel2.layout = AbsoluteLayout()
 
         lblStatus.run {
-            background = Color.white
+            background = Color(255, 255, 255)
             font = FONT
             horizontalAlignment = SwingConstants.CENTER
             border = LineBorder(Color(0, 0, 0), 1, true)
@@ -118,122 +145,142 @@ class MainFrame : JFrame(), Contract.View {
             horizontalTextPosition = SwingConstants.CENTER
             isOpaque = true
         }
-        jPanel1.add(lblStatus, AbsoluteConstraints(8, 10, 222, 40))
+        jPanel2.add(lblStatus, AbsoluteConstraints(10, 10, 260, 40))
 
+        btnFindPath.font = buttonFont
         btnFindPath.text = "Find path"
         btnFindPath.addActionListener { btnFindPathActionPerformed() }
-        jPanel1.add(btnFindPath, AbsoluteConstraints(130, 300, 90, 30))
+        jPanel2.add(btnFindPath, AbsoluteConstraints(150, 300, 120, 40))
 
-        btnClear.text = "Clear"
-        btnClear.addActionListener { btnClearActionPerformed() }
-        jPanel1.add(btnClear, AbsoluteConstraints(20, 300, 100, 30))
+        btnClearPathAndWalls.run {
+            font = buttonFont
+            text = "<html>Clear path,<br/>walls</html>"
+            addActionListener({ btnClearPathAndWallsActionPerformed() })
+            jPanel2.add(this, AbsoluteConstraints(151, 360, 120, 40))
+        }
 
         cbbAlgorithm.run {
             font = FONT
             model = DefaultComboBoxModel(arrayOf(ASTAR, DIJKSTRA, GREEDY_BEST_FIRST))
             toolTipText = "Choose algorithm"
             autoscrolls = true
+            jPanel2.add(this, AbsoluteConstraints(100, 70, 170, 40))
         }
-        jPanel1.add(cbbAlgorithm, AbsoluteConstraints(90, 70, 140, 40))
 
         cbDontCrossCorner.run {
             font = FONT
-            foreground = Color.white
+            foreground = Color(255, 255, 255)
             isSelected = true
             text = "Don't cross corner"
             border = LineBorder(Color(0, 0, 0), 1, true)
             horizontalAlignment = SwingConstants.CENTER
             isOpaque = false
+            jPanel2.add(this, AbsoluteConstraints(40, 200, 170, 20))
         }
-        jPanel1.add(cbDontCrossCorner, AbsoluteConstraints(20, 200, 200, 20))
 
         cbDiagonalMovement.run {
             font = FONT
-            foreground = Color.white
+            foreground = Color(255, 255, 255)
             isSelected = true
-            text = "Diagonal movement"
+            text = "Allow diagonal movement"
             border = LineBorder(Color(0, 0, 0), 1, true)
             horizontalAlignment = SwingConstants.CENTER
             isOpaque = false
+            jPanel2.add(this, AbsoluteConstraints(40, 250, 210, -1))
         }
-        jPanel1.add(cbDiagonalMovement, AbsoluteConstraints(20, 250, 192, -1))
 
-        cbbHeuristic.model = DefaultComboBoxModel<String>(arrayOf(EUCLIDEAN, MANHATTAN, OCTAGONAL))
-        jPanel1.add(cbbHeuristic, AbsoluteConstraints(90, 130, 140, 40))
+        cbbHeuristic.font = FONT
+        cbbHeuristic.model = DefaultComboBoxModel(arrayOf(EUCLIDEAN, MANHATTAN, OCTAGONAL))
+        jPanel2.add(cbbHeuristic, AbsoluteConstraints(100, 130, 170, 40))
 
         jLabel1.run {
             font = FONT
-            foreground = Color.white
+            foreground = Color(255, 255, 255)
             horizontalAlignment = SwingConstants.LEFT
             text = "Distance"
+            jPanel2.add(this, AbsoluteConstraints(10, 130, 90, 40))
         }
-        jPanel1.add(jLabel1, AbsoluteConstraints(10, 130, 90, 40))
 
         jLabel2.run {
             font = FONT
-            foreground = Color.white
+            foreground = Color(255, 255, 255)
             horizontalAlignment = SwingConstants.LEFT
             text = "Algorithm"
+            jPanel2.add(this, AbsoluteConstraints(10, 70, 90, 40))
         }
-        jPanel1.add(jLabel2, AbsoluteConstraints(10, 70, 80, 40))
+        JLabel().run {
+            icon = ImageIcon(this@MainFrame.javaClass.getResource(START_IMAGE_PATH))
+            jPanel2.add(this, AbsoluteConstraints(60, 430, 37, 35))
+        }
 
-        lblStart.icon = ImageIcon(javaClass.getResource(START_IMAGE))
-        jPanel1.add(lblStart, AbsoluteConstraints(20, 350, 37, 35))
 
         jLabel3.run {
             font = FONT
-            foreground = Color.white
+            foreground = Color(255, 255, 255)
             text = "Path"
+            jPanel2.add(this, AbsoluteConstraints(120, 540, 90, -1))
         }
-        jPanel1.add(jLabel3, AbsoluteConstraints(80, 460, 90, -1))
 
         jLabel4.run {
             font = FONT
-            foreground = Color.white
+            foreground = Color(255, 255, 255)
             text = "Start point"
+            jPanel2.add(this, AbsoluteConstraints(120, 440, 90, -1))
         }
-        jPanel1.add(jLabel4, AbsoluteConstraints(80, 360, 90, -1))
 
-        jLabel5.icon = ImageIcon(javaClass.getResource(PATH_IMAGE))
-        jPanel1.add(jLabel5, AbsoluteConstraints(20, 450, 37, 35))
+        JLabel().run {
+            icon = ImageIcon(this@MainFrame.javaClass.getResource(PATH_IMAGE_PATH))
+            jPanel2.add(this, AbsoluteConstraints(60, 530, 37, 35))
+        }
 
         jLabel6.run {
             font = FONT
-            foreground = Color.white
+            foreground = Color(255, 255, 255)
             text = "End point"
+            jPanel2.add(this, AbsoluteConstraints(120, 490, 90, -1))
         }
-        jPanel1.add(jLabel6, AbsoluteConstraints(80, 410, 90, -1))
 
-        lblStart2.icon = ImageIcon(javaClass.getResource(END_IMAGE))
-        jPanel1.add(lblStart2, AbsoluteConstraints(20, 400, 37, 35))
+        JLabel().run {
+            icon = ImageIcon(this@MainFrame.javaClass.getResource(END_IMAGE_PATH))
+            jPanel2.add(this, AbsoluteConstraints(60, 480, 37, 35))
+        }
 
-        val layout = GroupLayout(contentPane)
-        contentPane.layout = layout
-        layout.setHorizontalGroup(
-                layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                                .addGap(10, 10, 10)
-                                .addComponent(graphicPanel, GroupLayout.PREFERRED_SIZE, 500, GroupLayout.PREFERRED_SIZE)
-                                .addGap(10, 10, 10)
-                                .addComponent(jPanel1, GroupLayout.PREFERRED_SIZE, 240, GroupLayout.PREFERRED_SIZE)
-                                .addContainerGap(GroupLayout.DEFAULT_SIZE, java.lang.Short.MAX_VALUE.toInt()))
-        )
-        layout.setVerticalGroup(
-                layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                                .addGroup(layout.createParallelGroup(GroupLayout.Alignment.LEADING)
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addGap(11, 11, 11)
-                                                .addComponent(graphicPanel, GroupLayout.PREFERRED_SIZE, 500, GroupLayout.PREFERRED_SIZE))
-                                        .addGroup(layout.createSequentialGroup()
-                                                .addGap(10, 10, 10)
-                                                .addComponent(jPanel1, GroupLayout.PREFERRED_SIZE, 500, GroupLayout.PREFERRED_SIZE)))
-                                .addContainerGap(GroupLayout.DEFAULT_SIZE, java.lang.Short.MAX_VALUE.toInt()))
-        )
+        btnClear1.run {
+            font = buttonFont
+            text = "Clear all"
+            addActionListener { btnClearActionPerformed() }
+            jPanel2.add(this, AbsoluteConstraints(10, 300, 130, 40))
+        }
+
+        btnClearPath.run {
+            font = buttonFont
+            text = "Clear path"
+            addActionListener { btnClearPathActionPerformed() }
+            jPanel2.add(this, AbsoluteConstraints(10, 360, 130, 40))
+        }
+
+        contentPane.add(jPanel2, BorderLayout.EAST)
+
         pack()
     }
 
-    private fun btnFindPathActionPerformed() {//GEN-FIRST:event_btnFindPathActionPerformed
+    private fun btnClearPathActionPerformed() {
+        job?.cancel()
+        setViewEnable(true)
+        graphicPanel.clearPath()
+        graphicPanel.repaint()
+        lblStatus.text = ""
+    }
+
+    private fun btnClearPathAndWallsActionPerformed() {
+        job?.cancel()
+        setViewEnable(true)
+        graphicPanel.clearPathAndWalls()
+        graphicPanel.repaint()
+        lblStatus.text = ""
+    }
+
+    private fun btnFindPathActionPerformed() {
         val begin = graphicPanel.begin
         val end = graphicPanel.end
         when {
@@ -246,18 +293,13 @@ class MainFrame : JFrame(), Contract.View {
 
                 val hFunc = H_FUNCTIONS[cbbHeuristic.selectedItem]!!
                 searchAlgorithm = when (cbbAlgorithm.selectedItem) {
-                    ASTAR -> {
-                        AStar(this, hFunc)
-                    }
-                    DIJKSTRA -> {
-                        Dijkstra(this, hFunc)
-                    }
-                    else -> {
-                        GreedyBestFirst(this, hFunc)
-                    }
+                    ASTAR -> AStar(this, hFunc, cols, rows)
+                    DIJKSTRA -> Dijkstra(this, hFunc, cols, rows)
+                    else -> GreedyBestFirst(this, hFunc, cols, rows)
                 }.apply {
-                    isDiagonalMovement = cbDiagonalMovement.isSelected
-                    isNotCrossCorner = cbDontCrossCorner.isSelected
+                    allowDiagonalMovement = cbDiagonalMovement.isSelected
+                    notCrossCorner = cbDontCrossCorner.isSelected
+                    job?.cancel()
                     job = run(begin, end, graphicPanel.walls)
                 }
             }
@@ -267,34 +309,52 @@ class MainFrame : JFrame(), Contract.View {
     private fun btnClearActionPerformed() {
         job?.cancel()
         setViewEnable(true)
-        graphicPanel.clear()
+        graphicPanel.clearAll()
         graphicPanel.repaint()
         lblStatus.text = ""
     }
 
     private fun graphicPanelMouseClicked(evt: MouseEvent) {
-        val x = evt.x / CELL_SIZE
-        val y = evt.y / CELL_SIZE
+        val job = job
+        if (job !== null && job.isActive) return
 
-        if (SwingUtilities.isLeftMouseButton(evt)) {
-            if (graphicPanel[x, y].type !== PointType.WALL) {
-                graphicPanel.addWall(x, y)
-            } else {
-                graphicPanel.removeWall(x, y)
+        val x = evt.x / cellSize
+        val y = evt.y / cellSize
+
+        when {
+            SwingUtilities.isLeftMouseButton(evt) -> {
+                when (graphicPanel[x, y].type) {
+                    PointType.WALL -> graphicPanel.removeWall(x, y)
+                    else -> graphicPanel.addWall(x, y)
+                }
+                graphicPanel.repaint()
             }
-            graphicPanel.repaint()
-        } else if (SwingUtilities.isRightMouseButton(evt)) {
-            popup.show(rootPane, evt.x, evt.y)
-            point.x = x
-            point.y = y
+            SwingUtilities.isRightMouseButton(evt) -> {
+                popup.show(rootPane, evt.x, evt.y)
+                point.x = x
+                point.y = y
+            }
         }
     }
 
     private fun graphicPanelMouseDragged(evt: MouseEvent) {
-        val x = evt.x / CELL_SIZE
-        val y = evt.y / CELL_SIZE
-        graphicPanel.addWall(x, y)
-        graphicPanel.repaint()
+        println("Start")
+        val job = job
+        if (job !== null && job.isActive) return
+
+        if (SwingUtilities.isLeftMouseButton(evt)) try {
+            val x = evt.x / cellSize
+            val y = evt.y / cellSize
+            val point1 = graphicPanel[x, y]
+            when (point1.type) {
+                PointType.WALL -> graphicPanel.removeWall(x, y)
+                else -> graphicPanel.addWall(x, y)
+            }
+            graphicPanel.repaint()
+            println("Repaint")
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+        }
     }
 
     private fun setViewEnable(isEnable: Boolean) {
@@ -305,8 +365,8 @@ class MainFrame : JFrame(), Contract.View {
         cbbAlgorithm.isEnabled = isEnable
     }
 
-    override fun changePointType(p: Point?, type: Point.Type) {
-        if (p !== null) graphicPanel[p].type = type
+    override fun changePointType(x: Int, y: Int, type: PointType) {
+        graphicPanel[x, y].type = type
     }
 
     override fun showMessage(message: String) {
@@ -317,26 +377,24 @@ class MainFrame : JFrame(), Contract.View {
         @JvmStatic
         fun main(args: Array<String>) {
             UIManager.getInstalledLookAndFeels()
-                    .first { it.name == "Nimbus" }
-                    .let {
-                        UIManager.setLookAndFeel(it.className)
-                    }
+                    .firstOrNull { it.name == "Nimbus" }
+                    ?.let { UIManager.setLookAndFeel(it.className) }
             SwingUtilities.invokeLater { MainFrame().isVisible = true }
         }
 
         private val H_FUNCTIONS = hashMapOf<String, HeuristicFunction>(
-                EUCLIDEAN to { p1, p2 ->
-                    val p = (p1.x - p2.x).toDouble().pow(2)
-                    val q = (p1.y - p2.y).toDouble().pow(2)
+                EUCLIDEAN to { (x1, y1), (x2, y2) ->
+                    val p = (x1 - x2).toDouble().pow(2)
+                    val q = (y1 - y2).toDouble().pow(2)
                     sqrt(p + q)
                 },
 
-                MANHATTAN to { p1, p2 -> (abs(p1.x - p2.x) + abs(p1.y - p2.y)).toDouble() },
+                MANHATTAN to { (x1, y1), (x2, y2) -> (abs(x1 - x2) + abs(y1 - y2)).toDouble() },
 
-                OCTAGONAL to { p1, p2 ->
-                    val deltaX = abs(p1.x - p2.x)
-                    val deltaY = abs(p1.y - p2.y)
-                    deltaX + deltaY - 0.6 * min(deltaX, deltaY)
+                OCTAGONAL to { (x1, y1), (x2, y2) ->
+                    val deltaX = abs(x1 - x2)
+                    val deltaY = abs(y1 - y2)
+                    deltaX + deltaY - 0.6 * minOf(deltaX, deltaY)
                 }
         )
     }

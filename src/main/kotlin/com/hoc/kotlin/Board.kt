@@ -1,46 +1,52 @@
 package com.hoc.kotlin
 
-import com.hoc.kotlin.Point.Type
 import java.awt.Color
 import java.awt.Graphics2D
+import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 
 /**
  * Created by Peter Hoc on 26/04/2018
  */
 
-
-class Board {
-    private val points = Array(COLS) { col ->
-        Array(ROWS) { row ->
-            Point(col, row, Type.EMPTY)
-        }
-    }
+class Board(private val cols: Int, private val rows: Int, private val cellSize: Int) {
+    private val points = Array(cols) { col -> Array(rows) { Point(col, it, PointType.EMPTY, cellSize) } }
     var begin: Point? = points[0][0]
-        private set
-    var end: Point? = points[COLS - 1][ROWS - 1]
-        private set
+        set(value) {
+            if (value === null) {
+                field = null
+                return
+            }
+            val (x, y) = value
+            checkIndex(x, y) || return
+            points[x][y].takeIf { it.type != PointType.WALL }?.let { field = it }
+        }
+    var end: Point? = points[cols - 1][rows - 1]
+        set(value) {
+            if (value === null) {
+                field = null
+                return
+            }
+            val (x, y) = value
+            checkIndex(x, y) || return
+            points[x][y].takeIf { it.type != PointType.WALL }?.let { field = it }
+        }
     val walls: MutableList<Point> = mutableListOf()
-    private val startImage = ImageIO.read(Board::class.java.getResource(START_IMAGE)).run {
-        getSubimage((width - CELL_SIZE) / 2, (height - CELL_SIZE) / 2, CELL_SIZE, CELL_SIZE)
-    }
-    private val endImage = ImageIO.read(Board::class.java.getResource(END_IMAGE)).run {
-        getSubimage((width - CELL_SIZE) / 2, (height - CELL_SIZE) / 2, CELL_SIZE, CELL_SIZE)
-    }
+    private val startImage: BufferedImage = ImageIO.read(Board::class.java.getResource(START_IMAGE_PATH))
+    private val endImage: BufferedImage = ImageIO.read(Board::class.java.getResource(END_IMAGE_PATH))
 
     fun clearAll() {
         end = null
         begin = null
-        points.forEach { col ->
-            col.forEach { it.type = Type.EMPTY }
-        }
+        points.forEach { col -> col.forEach { it.type = PointType.EMPTY } }
+        walls.clear()
     }
 
     fun clearPathOpenedClosed() {
-        points.forEach { col ->
-            col.forEach {
-                if (it !== begin && it !== end) {
-                    it.type = Type.EMPTY
+        points.forEach {
+            it.forEach {
+                if (it.type === PointType.PATH || it.type == PointType.CLOSED || it.type == PointType.OPEN) {
+                    it.type = PointType.EMPTY
                 }
             }
         }
@@ -50,46 +56,31 @@ class Board {
         points.forEachIndexed { i, col ->
             col.forEachIndexed { j, p ->
                 g2d.color = Color.darkGray
-                g2d.drawRect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+                g2d.drawRect(i * cellSize, j * cellSize, cellSize, cellSize)
                 p.paint(g2d)
             }
         }
-        begin?.run { g2d.drawImage(startImage, x * CELL_SIZE, y * CELL_SIZE, null) }
-        end?.run { g2d.drawImage(endImage, x * CELL_SIZE, y * CELL_SIZE, null) }
+        begin?.run { g2d.drawImage(startImage, x * cellSize, y * cellSize, cellSize, cellSize, null) }
+        end?.run { g2d.drawImage(endImage, x * cellSize, y * cellSize, cellSize, cellSize, null) }
     }
 
-    operator fun get(x: Int, y: Int): Point {
-        require(x in 0 until COLS && y in 0 until ROWS, { "x must be in [0, COLS) and y must be in [0, ROWS)" })
+    fun getPointAt(x: Int, y: Int): Point {
+        checkIndex(x, y) || throw IllegalArgumentException()
         return points[x][y]
     }
 
-    fun setBegin(x: Int, y: Int) {
-        require(x in 0 until COLS && y in 0 until ROWS, { "x must be in [0, COLS) and y must be in [0, ROWS)" })
-        points[x][y].takeIf { it.type != Type.WALL }?.let { begin = it }
-    }
-
-    fun setEnd(x: Int, y: Int) {
-        require(x in 0 until COLS && y in 0 until ROWS, { "x must be in [0, COLS) and y must be in [0, ROWS)" })
-        if (points[x][y].type != Type.WALL) {
-            end = points[x][y]
-        }
-    }
-
     fun addWall(x: Int, y: Int) {
-        require(x in 0 until COLS && y in 0 until ROWS, { "x must be in [0, COLS) and y must be in [0, ROWS)" })
-        val point = points[x][y]
-
-        when (point) {
+        checkIndex(x, y) || return
+        when (points[x][y]) {
             begin -> return
             end -> return
-            else -> point.apply { type = Type.WALL }.let { walls += it }
+            else -> points[x][y].apply { type = PointType.WALL }.let { walls += it }
         }
     }
 
-    fun clearWall() = walls.run {
-        forEach { it.type = Type.EMPTY }
-        clear()
-    }
+    private fun checkIndex(x: Int, y: Int) = x in 0 until cols && y in 0 until rows
 
-    fun removeWall(x: Int, y: Int) = points[x][y].apply { type = Type.EMPTY }.let { walls -= it }
+    fun clearWall() = walls.onEach { it.type = PointType.EMPTY }.clear()
+
+    fun removeWall(x: Int, y: Int) = points[x][y].apply { type = PointType.EMPTY }.let { walls -= it }
 }

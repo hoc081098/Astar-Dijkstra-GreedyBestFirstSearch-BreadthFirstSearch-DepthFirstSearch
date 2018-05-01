@@ -7,13 +7,13 @@ import kotlinx.coroutines.experimental.Job
  */
 
 interface Contract {
-    interface Presenter {
+    interface Controller {
         fun run(begin: Point, end: Point, walls: List<Point>): Job
     }
 
     interface View {
         fun repaint()
         fun showMessage(message: String)
-        fun changePointType(p: Point?, type: Point.Type)
+        fun changePointType(x: Int, y: Int, type: PointType)
     }
 }
