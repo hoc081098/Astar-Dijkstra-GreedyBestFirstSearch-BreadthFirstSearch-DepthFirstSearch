@@ -330,7 +330,7 @@ class MainFrame : JFrame(), Contract.View {
         }.toList()
 
         val percentWall = list.size.toDouble() / (rows * cols) * 100
-        JOptionPane.showMessageDialog(rootPane, "Percent of walls: $percentWall")
+        JOptionPane.showMessageDialog(rootPane, "Percent of walls: %.4f%%".format(percentWall))
 
         graphicPanel.walls = list
         graphicPanel.repaint()
