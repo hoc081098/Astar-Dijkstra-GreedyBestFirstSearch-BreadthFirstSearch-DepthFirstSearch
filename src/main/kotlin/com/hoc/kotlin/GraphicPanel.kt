@@ -10,7 +10,12 @@ import javax.swing.JPanel
 
 class GraphicPanel(cols: Int, rows: Int, cellSize: Int) : JPanel() {
     private val board = Board(cols, rows, cellSize)
-    val walls: List<Point> = board.walls
+    var walls: List<Pair<Int, Int>>
+        get() = board.walls
+        set(value) {
+            board.clearWall()
+            value.forEach { (x, y) -> board.addWall(x, y) }
+        }
     var begin: Point?
         get() = board.begin
         set(value) {

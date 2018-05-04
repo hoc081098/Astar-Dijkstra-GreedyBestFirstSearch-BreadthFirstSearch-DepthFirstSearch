@@ -17,6 +17,7 @@ import java.awt.event.MouseEvent
 import java.awt.event.MouseMotionAdapter
 import java.lang.Math.abs
 import java.lang.Math.sqrt
+import java.util.*
 import javax.swing.*
 import javax.swing.border.BevelBorder
 import javax.swing.border.LineBorder
@@ -35,16 +36,20 @@ class MainFrame : JFrame(), Contract.View {
 
     private val point = Point(-1, -1, PointType.EMPTY, cellSize)
     private var job: Job? = null
-    private var searchAlgorithm: SearchAlgorithm? = null
+    private var searchAlgorithm: ISearchAlgorithm? = null
 
-    private lateinit var btnFindPath: JButton
+    private lateinit var buttonFindPath: JButton
     private lateinit var popup: JPopupMenu
     private lateinit var cbDiagonalMovement: JCheckBox
-    private lateinit var cbDontCrossCorner: JCheckBox
+    private lateinit var cbbDontCrossCorner: JCheckBox
     private lateinit var cbbAlgorithm: JComboBox<String>
     private lateinit var cbbHeuristic: JComboBox<String>
     private lateinit var graphicPanel: GraphicPanel
-    private lateinit var lblStatus: JLabel
+    private lateinit var labelStatus: JLabel
+    private lateinit var buttonRandom: JButton
+    private lateinit var textFieldPercent: JTextField
+    private lateinit var labelVisited: JLabel
+    private lateinit var labelTime: JLabel
 
     private val actor = actor<MouseEvent>(context = Swing, capacity = Channel.CONFLATED) {
         for (evt in this) {
@@ -84,11 +89,11 @@ class MainFrame : JFrame(), Contract.View {
 
 
         val jPanel2 = JPanel()
-        lblStatus = JLabel()
-        btnFindPath = JButton()
+        labelStatus = JLabel()
+        buttonFindPath = JButton()
         val btnClearPathAndWalls = JButton()
         cbbAlgorithm = JComboBox()
-        cbDontCrossCorner = JCheckBox()
+        cbbDontCrossCorner = JCheckBox()
         cbDiagonalMovement = JCheckBox()
         cbbHeuristic = JComboBox()
         val jLabel1 = JLabel()
@@ -136,7 +141,7 @@ class MainFrame : JFrame(), Contract.View {
         jPanel2.preferredSize = Dimension(280, 500)
         jPanel2.layout = AbsoluteLayout()
 
-        lblStatus.run {
+        labelStatus.run {
             background = Color(255, 255, 255)
             font = FONT
             horizontalAlignment = SwingConstants.CENTER
@@ -144,30 +149,59 @@ class MainFrame : JFrame(), Contract.View {
             isFocusable = false
             horizontalTextPosition = SwingConstants.CENTER
             isOpaque = true
+            jPanel2.add(this, AbsoluteConstraints(10, 10, 260, 26))
         }
-        jPanel2.add(lblStatus, AbsoluteConstraints(10, 10, 260, 40))
 
-        btnFindPath.font = buttonFont
-        btnFindPath.text = "Find path"
-        btnFindPath.addActionListener { btnFindPathActionPerformed() }
-        jPanel2.add(btnFindPath, AbsoluteConstraints(150, 300, 120, 40))
+
+
+        labelVisited = JLabel().apply {
+            background = Color(255, 255, 255)
+            font = FONT
+            horizontalAlignment = SwingConstants.CENTER
+            border = LineBorder(Color(0, 0, 0), 1, true)
+            isFocusable = false
+            horizontalTextPosition = SwingConstants.CENTER
+            isOpaque = true
+            jPanel2.add(this, AbsoluteConstraints(10, 36, 260, 26))
+        }
+
+        labelTime = JLabel().apply {
+            background = Color(255, 255, 255)
+            font = FONT
+            horizontalAlignment = SwingConstants.CENTER
+            border = LineBorder(Color(0, 0, 0), 1, true)
+            isFocusable = false
+            horizontalTextPosition = SwingConstants.CENTER
+            isOpaque = true
+            jPanel2.add(this, AbsoluteConstraints(10, 62, 260, 26))
+        }
+
+
+        buttonFindPath.font = buttonFont
+        buttonFindPath.text = "Find path"
+        buttonFindPath.addActionListener { btnFindPathActionPerformed() }
+        jPanel2.add(buttonFindPath, AbsoluteConstraints(150, 340, 120, 40))
 
         btnClearPathAndWalls.run {
             font = buttonFont
             text = "<html>Clear path,<br/>walls</html>"
             addActionListener({ btnClearPathAndWallsActionPerformed() })
-            jPanel2.add(this, AbsoluteConstraints(151, 360, 120, 40))
+            jPanel2.add(this, AbsoluteConstraints(151, 400, 120, 40))
         }
 
         cbbAlgorithm.run {
             font = FONT
-            model = DefaultComboBoxModel(arrayOf(ASTAR, DIJKSTRA, GREEDY_BEST_FIRST))
+            model = DefaultComboBoxModel(arrayOf(ASTAR, DIJKSTRA, GREEDY_BEST_FIRST, BREADTH_FIRST_SEARCH, DEPTH_FIRST_SEARCH))
             toolTipText = "Choose algorithm"
             autoscrolls = true
-            jPanel2.add(this, AbsoluteConstraints(100, 70, 170, 40))
+            jPanel2.add(this, AbsoluteConstraints(100, 110, 170, 40))
+            addActionListener {
+                val selectedItem = cbbAlgorithm.selectedItem
+                cbbHeuristic.isEnabled = selectedItem == ASTAR || selectedItem == GREEDY_BEST_FIRST
+            }
         }
 
-        cbDontCrossCorner.run {
+        cbbDontCrossCorner.run {
             font = FONT
             foreground = Color(255, 255, 255)
             isSelected = true
@@ -175,7 +209,7 @@ class MainFrame : JFrame(), Contract.View {
             border = LineBorder(Color(0, 0, 0), 1, true)
             horizontalAlignment = SwingConstants.CENTER
             isOpaque = false
-            jPanel2.add(this, AbsoluteConstraints(40, 200, 170, 20))
+            jPanel2.add(this, AbsoluteConstraints(40, 240, 170, 20))
         }
 
         cbDiagonalMovement.run {
@@ -186,19 +220,19 @@ class MainFrame : JFrame(), Contract.View {
             border = LineBorder(Color(0, 0, 0), 1, true)
             horizontalAlignment = SwingConstants.CENTER
             isOpaque = false
-            jPanel2.add(this, AbsoluteConstraints(40, 250, 210, -1))
+            jPanel2.add(this, AbsoluteConstraints(40, 290, 210, -1))
         }
 
         cbbHeuristic.font = FONT
         cbbHeuristic.model = DefaultComboBoxModel(arrayOf(EUCLIDEAN, MANHATTAN, OCTAGONAL))
-        jPanel2.add(cbbHeuristic, AbsoluteConstraints(100, 130, 170, 40))
+        jPanel2.add(cbbHeuristic, AbsoluteConstraints(100, 170, 170, 40))
 
         jLabel1.run {
             font = FONT
             foreground = Color(255, 255, 255)
             horizontalAlignment = SwingConstants.LEFT
             text = "Distance"
-            jPanel2.add(this, AbsoluteConstraints(10, 130, 90, 40))
+            jPanel2.add(this, AbsoluteConstraints(10, 170, 90, 40))
         }
 
         jLabel2.run {
@@ -206,11 +240,11 @@ class MainFrame : JFrame(), Contract.View {
             foreground = Color(255, 255, 255)
             horizontalAlignment = SwingConstants.LEFT
             text = "Algorithm"
-            jPanel2.add(this, AbsoluteConstraints(10, 70, 90, 40))
+            jPanel2.add(this, AbsoluteConstraints(10, 110, 90, 40))
         }
         JLabel().run {
             icon = ImageIcon(this@MainFrame.javaClass.getResource(START_IMAGE_PATH))
-            jPanel2.add(this, AbsoluteConstraints(60, 430, 37, 35))
+            jPanel2.add(this, AbsoluteConstraints(60, 470, 37, 35))
         }
 
 
@@ -218,45 +252,58 @@ class MainFrame : JFrame(), Contract.View {
             font = FONT
             foreground = Color(255, 255, 255)
             text = "Path"
-            jPanel2.add(this, AbsoluteConstraints(120, 540, 90, -1))
+            jPanel2.add(this, AbsoluteConstraints(120, 580, 90, -1))
+        }
+
+        buttonRandom = JButton().apply {
+            font = buttonFont
+            text = "Random"
+            addActionListener { randomWall() }
+            jPanel2.add(this, AbsoluteConstraints(90, 620, 120, 40))
+        }
+
+        textFieldPercent = JTextField().apply {
+            font = FONT
+            horizontalAlignment = JTextField.CENTER
+            jPanel2.add(this, AbsoluteConstraints(90, 670, 120, 30))
         }
 
         jLabel4.run {
             font = FONT
             foreground = Color(255, 255, 255)
             text = "Start point"
-            jPanel2.add(this, AbsoluteConstraints(120, 440, 90, -1))
+            jPanel2.add(this, AbsoluteConstraints(120, 480, 90, -1))
         }
 
         JLabel().run {
             icon = ImageIcon(this@MainFrame.javaClass.getResource(PATH_IMAGE_PATH))
-            jPanel2.add(this, AbsoluteConstraints(60, 530, 37, 35))
+            jPanel2.add(this, AbsoluteConstraints(60, 570, 37, 35))
         }
 
         jLabel6.run {
             font = FONT
             foreground = Color(255, 255, 255)
             text = "End point"
-            jPanel2.add(this, AbsoluteConstraints(120, 490, 90, -1))
+            jPanel2.add(this, AbsoluteConstraints(120, 530, 90, -1))
         }
 
         JLabel().run {
             icon = ImageIcon(this@MainFrame.javaClass.getResource(END_IMAGE_PATH))
-            jPanel2.add(this, AbsoluteConstraints(60, 480, 37, 35))
+            jPanel2.add(this, AbsoluteConstraints(60, 520, 37, 35))
         }
 
         btnClear1.run {
             font = buttonFont
             text = "Clear all"
             addActionListener { btnClearActionPerformed() }
-            jPanel2.add(this, AbsoluteConstraints(10, 300, 130, 40))
+            jPanel2.add(this, AbsoluteConstraints(10, 340, 130, 40))
         }
 
         btnClearPath.run {
             font = buttonFont
             text = "Clear path"
             addActionListener { btnClearPathActionPerformed() }
-            jPanel2.add(this, AbsoluteConstraints(10, 360, 130, 40))
+            jPanel2.add(this, AbsoluteConstraints(10, 400, 130, 40))
         }
 
         contentPane.add(jPanel2, BorderLayout.EAST)
@@ -264,20 +311,41 @@ class MainFrame : JFrame(), Contract.View {
         pack()
     }
 
+    private fun randomWall() {
+        val p = textFieldPercent.text.toIntOrNull()
+        if (p === null) {
+            JOptionPane.showMessageDialog(rootPane, "Percent must be a number", "Input error", JOptionPane.ERROR_MESSAGE)
+            return
+        } else if (p !in 0..100) {
+            JOptionPane.showMessageDialog(rootPane, "Percent must be in from 0 to 100", "Input error", JOptionPane.ERROR_MESSAGE)
+            return
+        }
+
+        val random = Random()
+        val seq = (1..rows).asSequence()
+
+        val list = (1..cols).asSequence().flatMap { x ->
+            seq.filter { random.nextDouble() > (100 - p) / 100.0 }
+                    .map { x to it }
+        }.toList()
+
+        val percentWall = list.size.toDouble() / (rows * cols) * 100
+        JOptionPane.showMessageDialog(rootPane, "Percent of walls: $percentWall")
+
+        graphicPanel.walls = list
+        graphicPanel.repaint()
+    }
+
     private fun btnClearPathActionPerformed() {
-        job?.cancel()
-        setViewEnable(true)
+        reset()
         graphicPanel.clearPath()
         graphicPanel.repaint()
-        lblStatus.text = ""
     }
 
     private fun btnClearPathAndWallsActionPerformed() {
-        job?.cancel()
-        setViewEnable(true)
+        reset()
         graphicPanel.clearPathAndWalls()
         graphicPanel.repaint()
-        lblStatus.text = ""
     }
 
     private fun btnFindPathActionPerformed() {
@@ -289,16 +357,21 @@ class MainFrame : JFrame(), Contract.View {
             begin === null -> JOptionPane.showMessageDialog(rootPane, "No begin point", "Error", JOptionPane.ERROR_MESSAGE)
             else -> {
                 setViewEnable(false)
-                lblStatus.text = "Finding..."
+                labelStatus.text = "Finding..."
+                labelVisited.text = "Finding..."
+                labelTime.text = "Finding..."
 
                 val hFunc = H_FUNCTIONS[cbbHeuristic.selectedItem]!!
                 searchAlgorithm = when (cbbAlgorithm.selectedItem) {
                     ASTAR -> AStar(this, hFunc, cols, rows)
                     DIJKSTRA -> Dijkstra(this, hFunc, cols, rows)
-                    else -> GreedyBestFirst(this, hFunc, cols, rows)
+                    GREEDY_BEST_FIRST -> GreedyBestFirst(this, hFunc, cols, rows)
+                    BREADTH_FIRST_SEARCH -> BFS(this, cols, rows)
+                    DEPTH_FIRST_SEARCH -> DFS(this, cols, rows)
+                    else -> return
                 }.apply {
                     allowDiagonalMovement = cbDiagonalMovement.isSelected
-                    notCrossCorner = cbDontCrossCorner.isSelected
+                    notCrossCorner = cbbDontCrossCorner.isSelected
                     job?.cancel()
                     job = run(begin, end, graphicPanel.walls)
                 }
@@ -307,11 +380,17 @@ class MainFrame : JFrame(), Contract.View {
     }
 
     private fun btnClearActionPerformed() {
-        job?.cancel()
-        setViewEnable(true)
+        reset()
         graphicPanel.clearAll()
         graphicPanel.repaint()
-        lblStatus.text = ""
+    }
+
+    private fun reset() {
+        job?.cancel()
+        setViewEnable(true)
+        labelStatus.text = ""
+        labelVisited.text = ""
+        labelTime.text = ""
     }
 
     private fun graphicPanelMouseClicked(evt: MouseEvent) {
@@ -360,17 +439,20 @@ class MainFrame : JFrame(), Contract.View {
     private fun setViewEnable(isEnable: Boolean) {
         cbbHeuristic.isEnabled = isEnable
         cbDiagonalMovement.isEnabled = isEnable
-        cbDontCrossCorner.isEnabled = isEnable
-        btnFindPath.isEnabled = isEnable
+        cbbDontCrossCorner.isEnabled = isEnable
+        buttonFindPath.isEnabled = isEnable
         cbbAlgorithm.isEnabled = isEnable
+        buttonRandom.isEnabled = isEnable
     }
 
     override fun changePointType(x: Int, y: Int, type: PointType) {
         graphicPanel[x, y].type = type
     }
 
-    override fun showMessage(message: String) {
-        lblStatus.text = message
+    override fun showMessage(pathInfo: String, visited: String, time: String) {
+        labelStatus.text = pathInfo
+        labelVisited.text = visited
+        labelTime.text = time
     }
 
     companion object {

@@ -31,14 +31,14 @@ class Board(private val cols: Int, private val rows: Int, private val cellSize: 
             checkIndex(x, y) || return
             points[x][y].takeIf { it.type != PointType.WALL }?.let { field = it }
         }
-    val walls: MutableList<Point> = mutableListOf()
+    val walls: MutableList<Pair<Int, Int>> = mutableListOf()
     private val startImage: BufferedImage = ImageIO.read(Board::class.java.getResource(START_IMAGE_PATH))
     private val endImage: BufferedImage = ImageIO.read(Board::class.java.getResource(END_IMAGE_PATH))
 
     fun clearAll() {
         end = null
         begin = null
-        points.forEach { col -> col.forEach { it.type = PointType.EMPTY } }
+        points.forEach { it.forEach { it.type = PointType.EMPTY } }
         walls.clear()
     }
 
@@ -74,13 +74,20 @@ class Board(private val cols: Int, private val rows: Int, private val cellSize: 
         when (points[x][y]) {
             begin -> return
             end -> return
-            else -> points[x][y].apply { type = PointType.WALL }.let { walls += it }
+            else -> {
+                points[x][y].type = PointType.WALL
+                walls += x to y
+                println("wall $x, $y")
+            }
         }
     }
 
     private fun checkIndex(x: Int, y: Int) = x in 0 until cols && y in 0 until rows
 
-    fun clearWall() = walls.onEach { it.type = PointType.EMPTY }.clear()
+    fun clearWall() = walls.onEach { (x, y) -> points[x][y].type = PointType.EMPTY }.clear()
 
-    fun removeWall(x: Int, y: Int) = points[x][y].apply { type = PointType.EMPTY }.let { walls -= it }
+    fun removeWall(x: Int, y: Int) {
+        points[x][y].type = PointType.EMPTY
+        walls -= x to y
+    }
 }

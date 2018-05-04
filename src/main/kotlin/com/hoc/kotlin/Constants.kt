@@ -6,9 +6,9 @@ import java.awt.Font
  * Created by Peter Hoc on 26/04/2018
  */
 
-const val CELL_SIZE = 20
-const val COLS = 54
-const val ROWS = 35
+const val CELL_SIZE = 10
+const val COLS = 108
+const val ROWS = 70
 const val PANEL_WIDTH = CELL_SIZE * COLS
 const val PANEL_HEIGHT = CELL_SIZE * ROWS
 
@@ -16,10 +16,11 @@ const val PATH_IMAGE_PATH = "/images/path.JPG"
 const val START_IMAGE_PATH = "/images/start.JPG"
 const val END_IMAGE_PATH = "/images/end.JPG"
 
-
 const val ASTAR = "ASTAR"
 const val DIJKSTRA = "DIJKSTRA"
 const val GREEDY_BEST_FIRST = "GREEDY BEST-FIRST"
+const val BREADTH_FIRST_SEARCH = "BREADTH FIRST SEARCH"
+const val DEPTH_FIRST_SEARCH = "DEPTH FIRST SEARCH"
 
 const val EUCLIDEAN = "EUCLIDEAN"
 const val MANHATTAN = "MANHATTAN"
