@@ -77,7 +77,6 @@ class Board(private val cols: Int, private val rows: Int, private val cellSize: 
             else -> {
                 points[x][y].type = PointType.WALL
                 walls += x to y
-                println("wall $x, $y")
             }
         }
     }

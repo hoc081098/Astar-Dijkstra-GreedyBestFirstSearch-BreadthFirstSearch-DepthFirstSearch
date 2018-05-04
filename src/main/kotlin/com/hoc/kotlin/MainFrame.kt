@@ -67,7 +67,7 @@ class MainFrame : JFrame(), Contract.View {
     private fun initComponents() {
         //Frame
         defaultCloseOperation = WindowConstants.EXIT_ON_CLOSE
-        title = "AStar / Dijkstra / BFS"
+        title = "AStar / Dijkstra / Best FS / BFS / DFS"
         isAlwaysOnTop = true
         preferredSize = Dimension(800, 600)
         isResizable = true
