@@ -12,6 +12,6 @@ This is desktop application with Java Swing, written in Kotlin language
 Install as usual, clone repo, and run on IDE
 
 ## Contact me :
-[![Email](https://img.shields.io/badge/petrus-email-yellowgreen.svg)](hoc081098@gmail.com) 
+[![Email](https://img.shields.io/badge/petrus-email-yellowgreen.svg)](mailto:hoc081098@gmail.com) 
 [![Website](https://img.shields.io/badge/petrus-blog-orange.svg)](https://kotlinshare.wordpress.com/)
 [![Facebook](https://img.shields.io/badge/petrus-Facebook-brightgreen.svg)](https://www.facebook.com/profile.php?id=100010694640299) 
