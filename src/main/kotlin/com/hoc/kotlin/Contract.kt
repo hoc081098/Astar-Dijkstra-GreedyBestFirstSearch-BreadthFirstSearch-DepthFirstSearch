@@ -5,9 +5,9 @@ package com.hoc.kotlin
  */
 
 interface Contract {
-    interface View {
-        fun repaint()
-        fun showMessage(pathInfo: String, visited: String, time: String)
-        fun changePointType(x: Int, y: Int, type: PointType)
-    }
+  interface View {
+    fun repaint()
+    fun showMessage(pathInfo: String, visited: String, time: String)
+    fun changePointType(x: Int, y: Int, type: PointType)
+  }
 }

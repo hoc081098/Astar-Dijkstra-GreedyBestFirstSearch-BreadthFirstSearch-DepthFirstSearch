@@ -30,12 +30,12 @@ private const val FONT_SIZE = 14
 private const val FONT_PATH = "/fonts/AndikaNewBasic-R.ttf"
 
 object Constants {
-    @JvmField
-    val FONT: Font = try {
-        val resourceAsStream = javaClass.getResourceAsStream(FONT_PATH)
-        Font.createFont(Font.TRUETYPE_FONT, resourceAsStream).deriveFont(FONT_SIZE.toFloat())
-    } catch (e: Exception) {
-        Font("Consolas", Font.PLAIN, FONT_SIZE)
-    }
+  @JvmField
+  val FONT: Font = try {
+    val resourceAsStream = javaClass.getResourceAsStream(FONT_PATH)
+    Font.createFont(Font.TRUETYPE_FONT, resourceAsStream).deriveFont(FONT_SIZE.toFloat())
+  } catch (e: Exception) {
+    Font("Consolas", Font.PLAIN, FONT_SIZE)
+  }
 
 }
